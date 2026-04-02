@@ -13,6 +13,9 @@ const format = (ts, fmt = 'yyyy-MM-dd HH:mm:ss') => {
 	return $.time(fmt, ts)
 }
 
+const DAILY_COIN_TIMES = 5
+const DAILY_COIN_EXP = DAILY_COIN_TIMES * 10
+
 const check = key =>
 	!config.hasOwnProperty(key) ||
 	!config[key].hasOwnProperty("time") ||
@@ -29,11 +32,11 @@ const string2object = cookie => {
 	return obj
 }
 
-const isNotComplete = exec_times => 
+const isNotComplete = () => 
 	config.user.num === 0 ||
 	config.watch.num === 0 ||
 	config.share.num === 0 ||
-	(config.coins.num < exec_times * 10 && Math.floor(config.user.money) > 5)
+	(config.coins.num < DAILY_COIN_EXP && Math.floor(config.user.money) > 5)
 
 const generateSign = body => md5(
 	$.queryStr(Object.fromEntries(new Map(Array.from(Object.entries(body)).sort()))) 
@@ -182,10 +185,10 @@ async function signBiliBili() {
 	if (config.cookie && await me()) {
 		await queryStatus()
 		const initialCoinExp = Number(config.coins.num || 0)
-		const exec_times = Number(config.Settings?.exec ?? 5)
+		const exec_times = DAILY_COIN_TIMES
 		const real_times = Math.max(0, exec_times - (Number(config.coins.num) / 10))
-		const targetCoins = Math.min(50, exec_times * 10)
-		let flag = isNotComplete(exec_times)
+		const targetCoins = DAILY_COIN_EXP
+		let flag = isNotComplete()
 		if (flag){
 			await dynamic()
 			if (cards.length) {
@@ -266,7 +269,7 @@ async function signBiliBili() {
 				}
 			} 
 		}
-		flag = !isNotComplete(exec_times)
+		flag = !isNotComplete()
 		const gainedCoinExp = Math.max(0, Number(config.coins.num || 0) - initialCoinExp)
 		let title = `${$.name} 登录${config.user.num}/观看${config.watch.num}/分享${config.share.num}/投币${config.coins.num / 10}${flag ? "已完成" : "未完成"}`
 		$.log(`#### ${title}`)
@@ -1212,12 +1215,12 @@ async function queryStatus() {
 					$.log("! 今日尚未分享")
 					config.share.num = 0
 				}
-				if (body.data.coins === 50){
+				if (body.data.coins === DAILY_COIN_EXP){
 					$.log("- 今日已投币")
 					if (!config['coins'].hasOwnProperty("time")) config.coins.time = startTime
-				} else if ((body.data.coins / 10) >= Number(config.Settings?.exec ?? 5)) {
+				} else if ((body.data.coins / 10) >= DAILY_COIN_TIMES) {
 					if (!config['coins'].hasOwnProperty("time")) config.coins.time = startTime
-					$.log("- 今日已投币（达到用户设定数量）")
+					$.log(`- 今日已投币（达到固定 ${DAILY_COIN_TIMES} 币）`)
 				} else if (config.user.money <= 5) {
 					$.log("! 硬币数不足")
 				} else {
